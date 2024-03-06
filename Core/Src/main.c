@@ -54,6 +54,7 @@ TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 uint16_t ADC_VAL;
+
 //uint8_t temp;
 
 /* USER CODE END PV */
@@ -213,11 +214,11 @@ void getDataSoundMic(void){
 
 /** If you want to test, delete the notes syntax in the following code and main function
 void printImage(){
-			ST7735S_setWindow(0,0,160,128);
-			for(uint16_t i=0;i<40960;i++)
-			{
-				SPI_Write(image[i]);
-			}
+	ST7735S_setWindow(0,0,160,128);
+	for(uint16_t i=0;i<40960;i++)
+	{
+		//SPI_Write(image[i]);
+	}
 }
 */
 
@@ -230,8 +231,8 @@ void printImage(){
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-//	uint8_t count_line = 0;
-//	uint8_t frame_buffer[160] = {0};
+	//uint8_t count_line = 0;
+	uint8_t line_buffer[320] = {0}; // 1 line = 160 pixel = 160*2 byte -> get 120 line
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -264,27 +265,8 @@ int main(void)
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);      // Start emit pulse  with frequency 3MHz
 	__HAL_TIM_SetCompare(&htim2,TIM_CHANNEL_1,6);  // adjust PWM 50% duty cycle
 	
-	ST7735S_Init(&hspi2);     // initial Screen
 	OV7670_Init(&hi2c1);			// initial Camera
-	
-	/************************TEST AREA**********************/
-	/***********************test screen and SPI OK**********/
-	//printImage();
-	/*******************************************************/
-	
-	/***********************test i2c ok*********************/
-	//temp = DCR_Pid;
-	//HAL_I2C_Master_Transmit(&hi2c1,Slave_WR,&temp,1,100); 
-	//HAL_I2C_Master_Receive(&hi2c1,Slave_RD,&temp,1,100);
-	/*******************************************************/
-	
-	/*********************test Module DAC*******************/
-	//Set_Voltage(4095);
-	/*******************************************************/
-	
-	/********************test Camera OV7670*****************/
-	
-	/*******************************************************/
+	ST7735S_Init(&hspi2);     // initial Screen
 	
   /* USER CODE END 2 */
 
@@ -304,10 +286,31 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		
+		/************************TEST AREA**********************/
+		/***********************test screen and SPI OK**********/
+		//printImage();
+		/*******************************************************/
+		
+		/***********************test i2c ok*********************/
+		//temp = DCR_Pid;
+		//HAL_I2C_Master_Transmit(&hi2c1,Slave_WR,&temp,1,100); 
+		//HAL_I2C_Master_Receive(&hi2c1,Slave_RD,&temp,1,100);
+		/*******************************************************/
+		
+		/*********************test Module DAC*******************/
+		//HAL_TIM_PWM_Stop(&htim2,TIM_CHANNEL_1);
+		//Set_Voltage(100);
+		//HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
+		/*******************************************************/
+		
+		/********************test Camera OV7670*****************/
+		
+		/*******************************************************/
+		
 		/*****************get data image************************/
-		//get_Data(frame_buffer);
-		
-		
+		// Ram is not enought for a array about 160x120 = 34800 emplement
+		// => 
+		get_Data(line_buffer);
 		/*******************print image*************************/
 		
 //			ST7735S_setWindow(0,0,160,120);
@@ -575,7 +578,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, VS_Pin|Led_Pin|HS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, DC_Pin|Reset_lcd_Pin|CS_Pin, GPIO_PIN_RESET);
@@ -588,18 +591,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : D5_Pin D7_Pin PCLK_Pin */
-  GPIO_InitStruct.Pin = D5_Pin|D7_Pin|PCLK_Pin;
+  /*Configure GPIO pins : D5_Pin D7_Pin PCLK_Pin VS_Pin
+                           HS_Pin */
+  GPIO_InitStruct.Pin = D5_Pin|D7_Pin|PCLK_Pin|VS_Pin
+                          |HS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : VS_Pin Led_Pin HS_Pin */
-  GPIO_InitStruct.Pin = VS_Pin|Led_Pin|HS_Pin;
+  /*Configure GPIO pin : Led_Pin */
+  GPIO_InitStruct.Pin = Led_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(Led_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : DC_Pin Reset_lcd_Pin CS_Pin */
   GPIO_InitStruct.Pin = DC_Pin|Reset_lcd_Pin|CS_Pin;

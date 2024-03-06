@@ -15,7 +15,7 @@
 	*								AGC -	Automatic Gain Control
 	*								AEC -	Automatic Exposure Control
 	*								AWB -	Automatic White Balance
-	*								DCW	-	Downscale Control Word
+	*								DCW	-	Downsamp/crop/window
 	*								HF	-	Horizontal Frame
 	*								VF	-	Vertical Frame
   *******************************************************************************
@@ -48,11 +48,19 @@ extern "C" {
 #define Slave_WR								0x42	// slave write 
 #define Slave_RD								0x43	// slave read
 /*****************************************************some pin status**********************************************************************************/
-#define HS_HIGH    GPIOB->BSRR = (1<<14)        // pdf CD001711090 - p.172
-#define HS_LOW     GPIOB->BSRR = (1<<(14+16))
+#define HS_STATUS    ((GPIOB->IDR & 0x4000)  >> 14)   // pdf CD001711090 - p.171
+#define VS_STATUS    ((GPIOB->IDR & 0x800 )  >> 11)
+#define PCLK_STATUS  ((GPIOB->IDR & 0x400 )  >> 10)
 
-#define VS_HIGH    GPIOB->BSRR = (1<<11)
-#define VS_LOW     GPIOB->BSRR = (1<<(11+16))
+#define D0_STATUS    ((GPIOA->IDR & 0x20  )  >>  5)
+#define D1_STATUS    ((GPIOA->IDR & 0x40  )  >>  6)
+#define D2_STATUS    ((GPIOA->IDR & 0x10  )  >>  4)
+#define D3_STATUS    ((GPIOA->IDR & 0x80  )  >>  7)
+#define D4_STATUS    ((GPIOA->IDR & 0x8   )  >>  3)
+#define D5_STATUS    ((GPIOB->IDR & 0x1   )  >>  0)
+#define D6_STATUS    ((GPIOA->IDR & 0x4   )  >>  2)
+#define D7_STATUS    ((GPIOB->IDR & 0x2   )  >>  1)
+
 
 
 
@@ -104,22 +112,22 @@ extern "C" {
 #define DCR_Midh                0x1C	/* Read Manufacturer ID byte - High */
 #define DCR_Midl                0x1D	/* Read Manufacturer ID byte - Low */
 #define DCR_Mvfp                0x1E	/* Mirror/VFlip Enable, bit[5]: Mirror, bit[4]: VFlip, bit[2]: black sun enable */
-#define DCR_Laec                0x1F
-#define DCR_Adcctr0             0x20	/* ADC control: bit[3]: ADC range adjust, bit[2:0]: ADC reference adjust */
+//#define DCR_Laec                0x1F
+//#define DCR_Adcctr0             0x20	/* ADC control: bit[3]: ADC range adjust, bit[2:0]: ADC reference adjust */
 #define DCR_Adcctr1             0x21
 #define DCR_Adcctr2             0x22
-#define DCR_Adcctr3             0x23
+//#define DCR_Adcctr3             0x23
 #define DCR_Aew                 0x24	/* AGC/AEC - stable operating region(upper limit) */
 #define DCR_Aeb                 0x25	/* AGC/AEC - stable operating region(Lower limit) */
 #define DCR_Vpt                 0x26	/* AGC/AEC Fast mode operating region. Bit[7:4]: upper limit, bit[3:0]: lower limit */
-#define DCR_Bbias               0x27	/* B Channel signal output bias(COM6[3]=1), bit[7]: bias adjustment sign, bit[6:0]: bias value of 10-bit range */
-#define DCR_Gbbias              0x28	/* Gb Channel signal output bias(COM6[3]=1),parameter setting same b channel */
-#define DCR_Exhch               0x2A	/* Dummy Pixel Insert MSB */
-#define DCR_Exhcl               0x2B	/* Dummy Pixel Insert LSB */
-#define DCR_Rbias               0x2C	/* R Channel Signal Output Bias(COM6[3]=1), paramete same b chanel */
-#define DCR_Advfl               0x2D	/* LSB of inset dummy lines in Vertical direction */
-#define DCR_AdvfH               0x2E	/* MSB of inset dummy lines in Vertical direction */
-#define DCR_Yave                0x2F	/* Y/G Channel Average value */
+//#define DCR_Bbias               0x27	/* B Channel signal output bias(COM6[3]=1), bit[7]: bias adjustment sign, bit[6:0]: bias value of 10-bit range */
+//#define DCR_Gbbias              0x28	/* Gb Channel signal output bias(COM6[3]=1),parameter setting same b channel */
+//#define DCR_Exhch               0x2A	/* Dummy Pixel Insert MSB */
+//#define DCR_Exhcl               0x2B	/* Dummy Pixel Insert LSB */
+//#define DCR_Rbias               0x2C	/* R Channel Signal Output Bias(COM6[3]=1), paramete same b chanel */
+//#define DCR_Advfl               0x2D	/* LSB of inset dummy lines in Vertical direction */
+//#define DCR_AdvfH               0x2E	/* MSB of inset dummy lines in Vertical direction */
+//#define DCR_Yave                0x2F	/* Y/G Channel Average value */
 #define DCR_Hsyst               0x30	/* Hsync rising edge delay */
 #define DCR_Hsyen               0x31	/* Hsync falling edge delay */
 #define DCR_Href                0x32	/* bit[7:6]: Href edge offset to data output, bit[5:3] = HF[2:0] end, bit[2:0] = HF[2:0] start */
@@ -143,7 +151,6 @@ extern "C" {
 #define DCR_AWBC4               0x46
 #define DCR_AWBC5               0x47
 #define DCR_AWBC6               0x48
-
 #define DCR_Reg4b               0x4B	/* bit[0]: UV average enable */
 #define DCR_Dnsth               0x4C	/* De-noise strength */
 #define DCR_Mtx1                0x4F	/* Matrix coefficient 1 */
@@ -156,6 +163,15 @@ extern "C" {
 #define DCR_Contras             0x56	/* Contrast control */
 //#define DCR_Contras_Center      0x57	/* Contrast center */
 #define DCR_Mtxs                0x58	/* Matrix coefficient sign for coefficient 5 to 0, bit[7]: auto contrast center enable, bit[5:0]: Matrix coefficient sign */
+#define DCR_AWB7                0x59  /* AWB Control 7 */
+#define DCR_AWB8                0x5A  /* AWB Control 8 */
+#define DCR_AWB9                0x5B  /* AWB Control 9 */
+#define DCR_AWB10               0x5C  /* AWB Control 10 */
+#define DCR_AWB11               0x5D  /* AWB Control 11 */
+#define DCR_AWB12               0x5E  /* AWB Control 12 */
+#define DCR_AWB13               0x5F  /* AWB Control 13 */
+#define DCR_AWB14               0x60  /* AWB Control 14 */
+#define DCR_AWB15               0x61  /* AWB Control 15 */
 // #define DCR_Lcc1                0x62	/* lens correction option 1-X coordinate of lengs correction center relative to array center */
 // #define DCR_Lcc2                0x63	/* lens correction option 2-Y coordinate of lengs correction center relative to array center */ 
 // #define DCR_Lcc3                0x64	/* Lens correction option 3 G channel compensation coefficient when LLC5[2]=1, R,G,and B channel compensation coefficient when LCC5[2]=0 */
@@ -194,7 +210,7 @@ extern "C" {
 #define DCR_Gam13               0x87
 #define DCR_Gam14               0x88
 #define DCR_Gam15               0x89
-// #define DCR_Rgb444              0x8C	/* RGB 444 control */
+#define DCR_Rgb444              0x8C	/* RGB 444 control */
 //#define DCR_Dm_lnl							0x92	/* dummy line low 8 bit */
 //#define DCR_Dm_lnh							0x93	/* dummy line high 8 bit */
 //#define DCR_Lcc6								0x94	/* Lens correction option 6(LCC5[2]=1) */
@@ -226,13 +242,13 @@ extern "C" {
 #define DCR_Satctr              0xC9	/* Saturation control, Bit[7:4]: UV saturation control min, bit[3:0]: UV saturation control result */
 
 /**************************************************************Configuration Code**********************************************************************/
-#define DCR_Com1_CCIR656        0x40
+//#define DCR_Com1_CCIR656        0x40 /* CCIR656 enable pdf - p.11 */
 
-#define DCR_Com2_sleep          0x10
+//#define DCR_Com2_sleep          0x10
 
-#define DCR_Com3_swap           0x40
-#define DCR_Com3_scale_en       0x08
-#define DCR_Com3_dcw_en         0x04	// Data Clock Width Enable
+#define DCR_Com3_swap           0x40  // Byte swap
+#define DCR_Com3_scale_en       0x08  // Enable scaling
+#define DCR_Com3_dcw_en         0x04	// Enable downsamp/crop/window
 
 #define DCR_Clkrc_ext           0x40	// External clock
 #define DCR_Clkrc_0             0x00	// Internal clock
@@ -276,26 +292,25 @@ extern "C" {
 #define DCR_Com10_HREF_rev      0x08	// HREF reverse
 #define DCR_Com10_VS_ri         0x04	// VSYNC changes on rising edge of PCLK
 #define DCR_Com10_VS_neg        0x02	// VSYNC negative
-#define DCR_Com10_HS_neg        0x01	// HSYNC neagtive
+#define DCR_Com10_HS_neg        0x01	// HSYNC negative
 
 #define DCR_Mvfp_Mirror         0x20	// Mirror image
 #define DCR_Mvfp_VFlip          0x10	// Vertical Flip enable
 
 #define DCR_Tslb_Y_last         0x04	// UYVY - VYUY -see com13[0]
-#define DCR_Tslb_auto_ow        0x01	// Sensor automatically sets output window when resolution changes
+//#define DCR_Tslb_auto_ow        0x01	// Sensor automatically sets output window when resolution changes
 
 #define DCR_Com11_night         0x80	// Night mode
 #define DCR_Com11_min_fr        0x60	// 1/8 of nomal mode frame rate
 #define DCR_Com11_Hz_Auto       0x10	// enable 50/60 Hz auto detection
 #define DCR_Com11_50Hz          0x08	// 50Hz select
-#define DCR_Com11_exp           0x20	// Exposure depends on light itensity
+#define DCR_Com11_exp           0x02	// Exposure depends on light itensity
 
 #define DCR_Com12_HR_en         0x80	// Always has HREF
 
 #define DCR_Com13_gamma_en      0x80	// Gamma enable
-#define DCR_Com13_UV_sat        0xC8	// UV saturation auto adjust
+#define DCR_Com13_UV_sat        0x40	// UV saturation auto adjust
 #define DCR_Com13_UV_swap       0x01	// V before U
-#define DCR_Com13_rsvd          0x08	// Com13 reserved
 
 #define DCR_Com14_DCW_en        0x10	// DCW and scaling PCLK enable
 #define DCR_Com14_DCW_mscl      0x08	// Manual scaling
@@ -310,7 +325,7 @@ extern "C" {
 #define DCR_Com15_RGB565        0x10	// RGB565 output 
 #define DCR_Com15_RGB555        0x30	// RGB555 output
 
-#define DCR_Com16_AWB_gain_en   0x04	// AWB gain enable
+#define DCR_Com16_AWB_gain_en   0x08	// AWB gain enable
 
 #define DCR_Com17_AEC_win       0xC0	// AEC window must same com4[5:4]
 #define DCR_Com17_DSP_en        0x08	// DSP color bar enable
@@ -328,8 +343,8 @@ extern "C" {
 /**************************************************************Configuration Color*********************************************************************/
 #define DCR_Mtx_len 6
 
-#define DCR_Reg76_black         0x81	// Black pixel correction enable
-#define DCR_Reg76_white         0x41	// White pixel correction enable
+#define DCR_Reg76_black         0x80	// Black pixel correction enable
+#define DCR_Reg76_white         0x40	// White pixel correction enable
 
 #define DCR_Rgb444_en           0x02	// RGB 444 enable
 #define DCR_Rgb444_RGBx         0x01	// RGB 444 word format

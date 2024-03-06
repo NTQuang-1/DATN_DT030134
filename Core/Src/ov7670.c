@@ -213,16 +213,6 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 
 extern I2C_HandleTypeDef hi2c1;
 
-bool rising_edge_check(void){
-	bool status = true;
-	if(PCLK_Pin==0){
-		if(PCLK_Pin==1){
-			status = true;
-		}
-	} else status = false;
-	return status;
-}
-
 void OV7670_write(uint8_t *data, uint16_t size, uint32_t timeout){
 	HAL_I2C_Master_Transmit(&hi2c1,Slave_WR,data,size,timeout);
 }	
@@ -241,20 +231,19 @@ void OV7670_Init(I2C_HandleTypeDef *__i2c){
 }
 
 void get_Data(uint8_t *buffer){
-	static uint16_t count=0;
-	while(!PCLK_Pin); // D0-D7 sampling while MCLK rising edge(0 to 1)
-	HS_HIGH;          // After then D0-D7 start sampling while HS 0 to 1(rising edge)
+	uint16_t count=0;
+	while(!PCLK_Pin); // D0-D7 sampling while PCLK rising edge(0 to 1)
 	while(!HS_Pin);   // Check HS_Pin == 1
 	do {
-		buffer[count] |=  D7_Pin << 7;
-		buffer[count] |=  D6_Pin << 6;
-		buffer[count] |=  D5_Pin << 5;
-		buffer[count] |=  D4_Pin << 5;
-		buffer[count] |=  D3_Pin << 3;
-		buffer[count] |=  D2_Pin << 2;
-		buffer[count] |=  D1_Pin << 1;
-		buffer[count] |=  D0_Pin << 0;
+		buffer[count] |=  D7_STATUS << 7;
+		buffer[count] |=  D6_STATUS << 6;
+		buffer[count] |=  D5_STATUS << 5;
+		buffer[count] |=  D4_STATUS << 5;
+		buffer[count] |=  D3_STATUS << 3;
+		buffer[count] |=  D2_STATUS << 2;
+		buffer[count] |=  D1_STATUS << 1;
+		buffer[count] |=  D0_STATUS << 0;
 		count++;
-	}while(/*rising_edge_check() &&*/(count < (38400))); // QQVGA_WIDTH*QQVGA_HEIGHT*2
-
+	}while((count < (320))); // QQVGA_WIDTH*QQVGA_HEIGHT*2
+	
 }
