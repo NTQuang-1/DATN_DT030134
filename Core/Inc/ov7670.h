@@ -47,7 +47,7 @@ extern "C" {
 /*************************************************Addressed Read Write of Camera OV7670****************************************************************/
 #define Slave_WR								0x42	// slave write 
 #define Slave_RD								0x43	// slave read
-/*****************************************************some pin status**********************************************************************************/
+/*****************************************************pin status (read only)***************************************************************************/
 #define HS_STATUS    ((GPIOB->IDR & 0x4000)  >> 14)   // pdf CD001711090 - p.171
 #define VS_STATUS    ((GPIOB->IDR & 0x800 )  >> 11)
 #define PCLK_STATUS  ((GPIOB->IDR & 0x400 )  >> 10)
@@ -359,8 +359,7 @@ struct Reg_Data {
 /***********************************Begin Function**********************************************/
 void OV7670_Init(I2C_HandleTypeDef *__i2c);
 void OV7670_write(uint8_t *data, uint16_t size, uint32_t timeout);
-void get_Data(uint8_t *buffer);
-bool rising_edge_check(void);
+void get_frame(uint16_t *buffer,uint8_t w,uint8_t h);
 /*************************************End Function**********************************************/
 
 

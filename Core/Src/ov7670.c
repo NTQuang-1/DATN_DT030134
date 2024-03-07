@@ -230,20 +230,48 @@ void OV7670_Init(I2C_HandleTypeDef *__i2c){
 	free(temp);
 }
 
-void get_Data(uint8_t *buffer){
+/**
+ * @brief : This function get a frame from Camera OV7670
+ * @parameter : 
+ *       + uint16_t *buffer : a array using store value get from D7-D0
+ *       + uint8_t w        : width of frame (column)
+ *       + uint8_t h        : height of frame (row)
+ * @document : OV7670_OmniVisionTechnologies.pdf - p.7
+ */
+
+void get_frame(uint16_t *buffer,uint8_t w,uint8_t h){
 	uint16_t count=0;
-	while(!PCLK_Pin); // D0-D7 sampling while PCLK rising edge(0 to 1)
-	while(!HS_Pin);   // Check HS_Pin == 1
-	do {
-		buffer[count] |=  D7_STATUS << 7;
-		buffer[count] |=  D6_STATUS << 6;
-		buffer[count] |=  D5_STATUS << 5;
-		buffer[count] |=  D4_STATUS << 5;
-		buffer[count] |=  D3_STATUS << 3;
-		buffer[count] |=  D2_STATUS << 2;
-		buffer[count] |=  D1_STATUS << 1;
-		buffer[count] |=  D0_STATUS << 0;
-		count++;
-	}while((count < (320))); // QQVGA_WIDTH*QQVGA_HEIGHT*2
 	
+	while(!VS_STATUS); // wait for frame finish
+	while(VS_STATUS);  // start new frame
+	
+	while(h--){
+		while(!HS_STATUS); // wait for rising edge of signal HS
+		
+		while(w--){
+			buffer[count] &= 0;
+			while(PCLK_STATUS); // wait for falling edge of signal PCLK
+			buffer[count] |=  D7_STATUS << 7;
+			buffer[count] |=  D6_STATUS << 6;
+			buffer[count] |=  D5_STATUS << 5;
+			buffer[count] |=  D4_STATUS << 5;
+			buffer[count] |=  D3_STATUS << 3;
+			buffer[count] |=  D2_STATUS << 2;
+			buffer[count] |=  D1_STATUS << 1;
+			buffer[count] |=  D0_STATUS << 0;
+			buffer[count] <<= 8;
+			while(!PCLK_STATUS);
+			while(PCLK_STATUS);
+			buffer[count] |=  D7_STATUS << 7;
+			buffer[count] |=  D6_STATUS << 6;
+			buffer[count] |=  D5_STATUS << 5;
+			buffer[count] |=  D4_STATUS << 5;
+			buffer[count] |=  D3_STATUS << 3;
+			buffer[count] |=  D2_STATUS << 2;
+			buffer[count] |=  D1_STATUS << 1;
+			buffer[count] |=  D0_STATUS << 0;
+			while(!PCLK_STATUS);
+			count++;	
+		}
+	}
 }
