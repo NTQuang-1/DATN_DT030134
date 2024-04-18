@@ -11,12 +11,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define mcp4725_address 0xC0 //0xC4- other address
-#define mcp4725_dac_write  0x40  // Writes data to the DAC
-
-#include "stm32f1xx_hal.h"
-
-extern I2C_HandleTypeDef hi2c1;
+#define MCP4725_Address   0xC0 // consist off Device Code 1100 and Address Devide A2,A1,A0(pdf MCP4725 - p.27
+#define MCP4725_Dac_Write 0x40 // Pdf MCP4725.pdf - p.24.
 
 void Set_Voltage( int vout);
 

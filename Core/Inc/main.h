@@ -55,28 +55,31 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void error_led(void);
+void delay_us (uint16_t us);
+void delay_ms(uint16_t ms);
+void USART_Send(uint8_t data);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define MCLK_Pin GPIO_PIN_0
-#define MCLK_GPIO_Port GPIOA
-#define D6_Pin GPIO_PIN_2
-#define D6_GPIO_Port GPIOA
-#define D4_Pin GPIO_PIN_3
-#define D4_GPIO_Port GPIOA
-#define D2_Pin GPIO_PIN_4
-#define D2_GPIO_Port GPIOA
-#define D0_Pin GPIO_PIN_5
+#define D0_Pin GPIO_PIN_0
 #define D0_GPIO_Port GPIOA
-#define D1_Pin GPIO_PIN_6
+#define D1_Pin GPIO_PIN_1
 #define D1_GPIO_Port GPIOA
-#define D3_Pin GPIO_PIN_7
+#define D2_Pin GPIO_PIN_2
+#define D2_GPIO_Port GPIOA
+#define D3_Pin GPIO_PIN_3
 #define D3_GPIO_Port GPIOA
-#define D5_Pin GPIO_PIN_0
-#define D5_GPIO_Port GPIOB
-#define D7_Pin GPIO_PIN_1
-#define D7_GPIO_Port GPIOB
+#define D4_Pin GPIO_PIN_4
+#define D4_GPIO_Port GPIOA
+#define D5_Pin GPIO_PIN_5
+#define D5_GPIO_Port GPIOA
+#define D6_Pin GPIO_PIN_6
+#define D6_GPIO_Port GPIOA
+#define D7_Pin GPIO_PIN_7
+#define D7_GPIO_Port GPIOA
+#define MCLK_Pin GPIO_PIN_1
+#define MCLK_GPIO_Port GPIOB
 #define PCLK_Pin GPIO_PIN_10
 #define PCLK_GPIO_Port GPIOB
 #define VS_Pin GPIO_PIN_11

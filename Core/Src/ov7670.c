@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "ov7670.h"
 #include "main.h"
+#include "stm32f1xx_hal_i2c.h"
+#include "st7735s.h"
 
 /* <!Color mode> */
 #define RGB_MODE
@@ -18,10 +20,8 @@
 // #define QCIF_MODE
 // #define QQCIF_MODE
 
-struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
-	{ DCR_Com7, DCR_Com7_reset },
-	{ DCR_Com7, (DCR_Com7_reset & (~DCR_Com7_reset))},
-	{ DCR_Clkrc, 0x01 },    //PCLK settings, 15fps
+const Reg_Data OV7670_Setting[] = {
+	{ DCR_Com7, 0x80 }, // reset all register
 
 	#if defined(YUV_COLOR)
 		{DCR_Com7, 0x00},
@@ -29,9 +29,16 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 		{DCR_Com7, 0x01},
 	#elif defined(RGB_MODE)
 		{DCR_Com7, 0x04},
+		{DCR_Com15, 0xD0}, // Output format RGB565
+		{DCR_Rgb444, 0x00}, // Disable RGB444
+		{DCR_Com1, 0x00}, // Disable CCIR656
 	#elif defined(PBAY_MODE)
 		{DCR_Com7, 0x05},
 	#endif
+		
+	// Internal clock 9MHz x 8 / 12 = 6 MHz
+	{DCR_Dblv, 0xC0}, // Input clk Mul x8
+	{DCR_Clkrc, 0x0B},// Input ckl div 12
 
 	#if defined(VGA_MODE)
 		{DCR_Com3, 0x00},
@@ -41,6 +48,7 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 		{DCR_Scaling_dcwctr, 0x11},
 		{DCR_Scaling_pclk_div, 0xF0},
 		{DCR_Scaling_pckl_delay, 0x02},
+		
 	#elif defined(QVGA_MODE)
 		{DCR_Com3, 0x04},
 		{DCR_Com14, 0x19},
@@ -49,14 +57,15 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 		{DCR_Scaling_dcwctr, 0x11},
 		{DCR_Scaling_pclk_div, 0xF1},
 		{DCR_Scaling_pckl_delay, 0x02},
-	#elif defined(QQVGA_MODE) // 7
-		{DCR_Com3, 0x04},
-		{DCR_Com14, 0x1A},
+		
+	#elif defined(QQVGA_MODE)
+		{DCR_Com3, 0x04}, // DCW enable
+		{DCR_Com14, 0x1A},// PCLK div 4
 		{DCR_Scaling_xsc, 0x3A},
 		{DCR_Scaling_ysc, 0x35},
-		{DCR_Scaling_dcwctr, 0x22},
-		{DCR_Scaling_pclk_div, 0xF2},
-		{DCR_Scaling_pckl_delay, 0x02},
+		{DCR_Scaling_dcwctr, 0x22},// downsample VGA by 4 -> QQVGA
+		{DCR_Scaling_pclk_div, 0xF2},// Enable clock divider and Divided by 4
+		//{DCR_Scaling_pckl_delay, 0x01},
 
 	#elif defined(CIF_MODE)
 		{DCR_Com3, 0x09},
@@ -66,6 +75,7 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 		{DCR_Scaling_dcwctr, 0x11},
 		{DCR_Scaling_pclk_div, 0xF1},
 		{DCR_Scaling_pckl_delay, 0x02},
+		
 	#elif defined(QCIF_MODE)
 		{DCR_Com3, 0x0C},
 		{DCR_Com14, 0x11},
@@ -74,6 +84,7 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 		{DCR_Scaling_dcwctr, 0x11},
 		{DCR_Scaling_pclk_div, 0xF1},
 		{DCR_Scaling_pckl_delay, 0x52},
+		
 	#elif defined(QQCIF_MODE)
 		{DCR_Com3, 0x0C},
 		{DCR_Com14, 0x11},
@@ -82,28 +93,31 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 		{DCR_Scaling_dcwctr, 0x22},
 		{DCR_Scaling_pclk_div, 0xF2},
 		{DCR_Scaling_pckl_delay, 0x2A},
+		
 	#endif
+	
+	{ DCR_Mvfp, 0x10 }, // Don't mirror, VFlip image
 
-	{ 0xb0, 0x84 },         //Color mode (Not documented??)
+// Hardware window
+	
+	{ DCR_Tslb, 0x04 },     // avoid sensor auto set window
+	{ DCR_Hstart, 0x1E },   //HSTART = 00011110 000 = 240
+	{ DCR_Hstop, 0x1E },    //HSTOP  = 00011110 000 = 640-((640-160)/2 + 160)
+	{ DCR_Href, 0x00 },	    //HREF   = 00000000
+	{ DCR_Vstart, 0x2D },   //VSTART = 00101101 00  = 180
+	{ DCR_Vstop, 0x2D },    //VSTOP  = 00101101 00  = 480-((480-120)/2 + 120)
+	{ DCR_Vref, 0x00 },     //VREF   = 00000000
 
-// Hardware window - 6
-	{ DCR_Href, 0x80 },	    //HREF
-	{ DCR_Hstart, 0x17 },   //HSTART
-	{ DCR_Hstop, 0x05 },    //HSTOP
-	{ DCR_Vref, 0x0a },     //VREF
-	{ DCR_Vstart, 0x02 },   //VSTART
-	{ DCR_Vstop, 0x7a },    //VSTOP
-
-// Matrix coefficients - 7
+// Matrix coefficients, saturation = 0
 	{ DCR_Mtx1, 0x80 }, /* Matrix coefficient 1 */
 	{ DCR_Mtx2, 0x80 }, /* Matrix coefficient 2 */
 	{ DCR_Mtx3, 0x00 }, /* Matrix coefficient 3 */
 	{ DCR_Mtx4, 0x22 }, /* Matrix coefficient 4 */
-	{ DCR_Mtx5, 0x5e }, /* Matrix coefficient 5 */
+	{ DCR_Mtx5, 0x5E }, /* Matrix coefficient 5 */
 	{ DCR_Mtx6, 0x80 }, /* Matrix coefficient 6 */
 	{ DCR_Mtxs, 0x9e }, /* Matrix coefficient sign */
 
-// Gamma curve values - 16
+// Gamma curve values 
 	{ DCR_Slop, 0x20 },
 	{ DCR_Gam1, 0x10 },
 	{ DCR_Gam2, 0x1e },
@@ -121,157 +135,269 @@ struct Reg_Data OV7670_Setting[] = {  // All - 124*2 = 248 byte
 	{ DCR_Gam14, 0xd7 },
 	{ DCR_Gam15, 0xe8 },
 
-// AGC and AEC parameters - 14
-	{ DCR_Bd50max, 0x05 },
-	{ DCR_Bd60max, 0x07 },
-	{ DCR_Aew, 0x95 },
-	{ DCR_Aeb, 0x33 },
-	{ DCR_Vpt, 0xe3 },
-	{ DCR_Haecc1, 0x78 },
-	{ DCR_Haecc2, 0x68 },
-	{ 0xa1, 0x03 }, // RSV
-	{ DCR_Haecc3, 0xd8 },
-	{ DCR_Haecc4, 0xd8 },
-	{ DCR_Haecc5, 0xf0 },
-	{ DCR_Haecc6, 0x90 },
-	{ DCR_Haecc7, 0x94 },
-	{ DCR_Aech, 0x00 },
-
-// AWB parameters - 20
+// AWB parameters- white balance
+	{ DCR_Com8, 0xA7 }, // FsstAEC/AGC | AEC step | Band filter 50Hz | AGC enable | AWB enable | AEC enable 
 	{ DCR_AWBC1, 0x0a },
 	{ DCR_AWBC2, 0xf0 },
 	{ DCR_AWBC3, 0x34 },
 	{ DCR_AWBC4, 0x58 },
 	{ DCR_AWBC5, 0x28 },
 	{ DCR_AWBC6, 0x3a },
-	{ 0x59, 0x88 },        // 0x59 -> 0x61 : AWB Control
-	{ 0x5a, 0x88 },       
-	{ 0x5b, 0x44 },       
-	{ 0x5c, 0x67 },       
-	{ 0x5d, 0x49 },       
-	{ 0x5e, 0x0e },       
+	{ DCR_AWB7, 0x88 },
+	{ DCR_AWB8, 0x88 },       
+	{ DCR_AWB9, 0x44 },       
+	{ DCR_AWB10, 0x67 },       
+	{ DCR_AWB11, 0x49 },       
+	{ DCR_AWB12, 0x0e },       
 	{ DCR_Awbctr3, 0x0a },
 	{ DCR_Awbctr2, 0x55 },
 	{ DCR_Awbctr1, 0x11 },
-	{ DCR_Awbctr0, 0x9f },
+	{ DCR_Awbctr0, 0x9f }, // Advance AWB 
 	{ DCR_Ggain, 0x40 },
 	{ DCR_Blue, 0x40 },
-	{ DCR_Red, 0x60 },
-	{ DCR_Com8, 0xe7 },
+	{ DCR_Red, 0x40 },
+	{ DCR_Com9, 0x68 },  //-----------------------------------
+	
+	// Bright image
+	{ DCR_Bright, 0x18},
 
-// Additional parameters - 49
-	{ DCR_Arblm, 0x11 },
-	{ DCR_Edge, 0x00 },
-	{ DCR_Reg75, 0x05 },
-	{ DCR_Reg76, 0xe1 },
-	{ DCR_Dnsth, 0x00 },
-	{ DCR_Reg77, 0x01 },
-	{ 0xb8, 0x0a },
-	{ DCR_Com16, 0x18 },
-	{ DCR_Com11, 0x12 },
-	{ DCR_Nt_ctrl, 0x88 },
-	{ 0x96, 0x00 },
-	{ 0x97, 0x30 },
-	{ 0x98, 0x20 },
-	{ 0x99, 0x30 },
-	{ 0x9a, 0x84 },
-	{ 0x9b, 0x29 },
-	{ 0x9c, 0x03 },
-	{ DCR_Bd50st, 0x4c },
-	{ DCR_Bd60st, 0x3f },
-	{ 0x78, 0x04 },
+	// Contrast image
+	{ DCR_Contras, 0x40},
+	
+	// Effect : normal
+	{ DCR_Manu, 0xC0 },
+	{ DCR_Manv, 0x80 },
+	
+	// Banding filter 50 Hz
+	{ DCR_Com11, 0x1A }, // Select banding filter 50 Hz | enviroment-dependent exposure
+	{ DCR_Bd50st, 0x4C }, // 50Hz banding filter value (COM8[5]=1 and COM11[3]=1)
+	{ DCR_Bd50max, 0x05 }, // max banding filter step
 	{ DCR_Com5, 0x61 },
-	{ DCR_Com6, 0x4b },
+	{ DCR_Com6, 0x4B },
 	{ 0x16, 0x02 },
-	{ DCR_Mvfp, 0x00 },
 	{ DCR_Adcctr1, 0x02 },
 	{ DCR_Adcctr2, 0x91 },
 	{ 0x29, 0x07 },
-	{ DCR_Chlf, 0x0b },
-	{ 0x35, 0x0b },
-	{ DCR_Adc, 0x1d },
-	{ DCR_Acom, 0x71 },
-	{ DCR_Ofon, 0x2a },
-	{ DCR_Com12, 0x78 },
-	{ 0x4d, 0x40 },
-	{ 0x4e, 0x20 },
-	{ DCR_Gfix, 0x00 },
-	{ DCR_Dblv, 0x3a },
-	{ DCR_Reg74, 0x10 },
-	{ 0x8d, 0x4f },
-	{ 0x8e, 0x00 },
-	{ 0x8f, 0x00 },
+	{ DCR_Chlf, 0x0B },
+	{ 0x35, 0x0B },
+	{ DCR_Adc, 0x1D },
+	{ DCR_Acom, 0x71 }, // ADC and Analog Common Mode Control
+	{ DCR_Ofon, 0x2A },
+	{ 0x4D, 0x40 }, // DM Pos, dummy row position
+	{ 0x4E, 0x20 },
+	{ 0x8D, 0x4F },
+	{ 0x8E, 0x00 },
+	{ 0x8F, 0x00 },
 	{ 0x90, 0x00 },
 	{ 0x91, 0x00 },
 	{ 0x96, 0x00 },
-	{ 0x9a, 0x00 },
-	{ DCR_Ablc1, 0x0c },
-	{ 0xb2, 0x0e },
-	{ DCR_Thl_st, 0x82 },
-	{ DCR_Reg4b, 0x01 }, 
+	{ 0x9A, 0x00 },
+	{ 0xB0, 0x84 },
+	{ DCR_Ablc1, 0x0C }, // ABLC enable
+	{ 0xB2, 0x0E },
+	{ DCR_Thl_st, 0x82 }, // ABLC target
+	{ 0xB8, 0x0A },
+	{ DCR_Edge, 0x00 }, // Edge Enhancement adjustment
+	{ DCR_Reg74, 0x10 }, // Digital gain control by REG74[1:0], digital gain manual control bypasss
+	{ DCR_Reg75, 0x05 }, // edge enhancement lower limit
+	{ DCR_Reg76, 0xE1 }, // black pixel correction enable | white pixel corection enable | bit[4:0]: edge enhancement higher limit
+	{ DCR_Reg77, 0xcc }, // de-noise offset
+	{ DCR_Dnsth, 0x00 }, // De-noise strength
+	{ DCR_Reg4b, 0x09 }, // UV average enable
+	{ DCR_Satctr, 0x60 }, // Saturation control
+	{ DCR_Arblm, 0x11 }, // Array Reference Control
+
+	// AGC and AEC parameters 
+//	{ DCR_Bd50max, 0x05 },
+//	{ DCR_Bd60max, 0x07 },
+//	{ DCR_Aew, 0x95 },
+//	{ DCR_Aeb, 0x33 },
+//	{ DCR_Vpt, 0xe3 },
+//	{ DCR_Haecc1, 0x78 },
+//	{ DCR_Haecc2, 0x68 },
+//	{ 0xa1, 0x03 }, // RSV
+//	{ DCR_Haecc3, 0xd8 },
+//	{ DCR_Haecc4, 0xd8 },
+//	{ DCR_Haecc5, 0xf0 },
+//	{ DCR_Haecc6, 0x90 },
+//	{ DCR_Haecc7, 0x94 },
+//	{ DCR_Aech, 0x00 },
+
+// Additional parameters 
+//	{ DCR_Com16, 0x18 }, 
+//	{ DCR_Nt_ctrl, 0x88 },
+//	{ 0x78, 0x04 },
+//	{ 0x97, 0x30 },
+//	{ 0x98, 0x20 },
+//	{ 0x99, 0x30 },
+//	{ 0x9b, 0x29 },
+//	{ 0x9c, 0x03 },
+//	{ DCR_Gfix, 0x00 },
 };
 
-extern I2C_HandleTypeDef hi2c1;
+/* Private function */
+static void I2C_Start(void);
+static void I2C_Addr(uint8_t addr);
+static void I2C_WriteByte(uint8_t data);
+static uint8_t I2C_Read(uint8_t nack);
 
-void OV7670_write(uint8_t *data, uint16_t size, uint32_t timeout){
-	HAL_I2C_Master_Transmit(&hi2c1,Slave_WR,data,size,timeout);
-}	
-
-void OV7670_Init(I2C_HandleTypeDef *__i2c){
-	hi2c1 = *__i2c;
-	hi2c1.Instance->CR1 |= I2C_CR1_PE;
-	
-	uint8_t *temp = (uint8_t*)malloc(248*sizeof(uint8_t));
-	for(uint8_t i=0;i<124;i++){
-		temp[2*i] = OV7670_Setting[i].reg;
-		temp[2*i+1] = OV7670_Setting[i].val;
-	}
-	OV7670_write(temp,248,1000);
-	free(temp);
+/**
+ * @brief Change interface Mode
+ * @note  By default, it operates in slave mode. The interface automatically switches from slave to
+ *        master, after it generates a START condition and from master to slave, if an arbitration loss
+ *        or a Stop generation occurs, allowing multimaster capability.
+ * @reference CD00171190.pdf - p.758
+ */
+void OV7670_write_reg(uint8_t reg, uint8_t data)
+{
+	__disable_irq();
+	I2C_Start();
+	I2C_Addr(Slave_WR);
+	I2C_WriteByte(reg);
+	I2C_WriteByte(data);
+	I2C1->CR1 |= I2C_CR1_STOP | I2C_CR1_ACK;
+	delay_ms(1);
+	__enable_irq();
 }
 
 /**
- * @brief : This function get a frame from Camera OV7670
- * @parameter : 
- *       + uint16_t *buffer : a array using store value get from D7-D0
- *       + uint8_t w        : width of frame (column)
- *       + uint8_t h        : height of frame (row)
- * @document : OV7670_OmniVisionTechnologies.pdf - p.7
+ * @brief OV7670_read_reg function reads data from register of Camera OV7670.
+ * @note  Follow the SCCB interface, if user want to read data from Camera.
+ *        Before, write data 2 phase, then read data 2 phase.
+ */
+uint8_t OV7670_read_reg(uint8_t reg)
+{
+	uint8_t dat;
+/**********************************************************************************/
+/*                          write data 2 phase                                    */
+/**********************************************************************************/
+	__disable_irq();
+	I2C_Start();
+	I2C_Addr(Slave_WR);
+	I2C_WriteByte(reg);
+	I2C1->CR1 |= I2C_CR1_STOP | I2C_CR1_ACK;
+	delay_ms(1);
+/**********************************************************************************/
+/*                              Read data 2 phase                                 */
+/**********************************************************************************/
+	I2C_Start();
+	I2C_Addr(Slave_RD);
+	dat = I2C_Read(1);
+	I2C1->CR1 |= I2C_CR1_STOP | I2C_CR1_ACK;
+	delay_ms(1);
+	__enable_irq();
+	return dat;
+}
+
+void OV7670_Init(void)
+{
+	I2C_Start();
+	I2C_Addr(Slave_WR);
+	I2C1->CR1 |= I2C_CR1_STOP | I2C_CR1_ACK;
+	for(uint8_t i=0;i<(sizeof(OV7670_Setting) / 2);i++)
+		OV7670_write_reg(OV7670_Setting[i].reg,OV7670_Setting[i].val);
+}
+
+/**
+ * @brief      This function get a frame from Camera OV7670
+ * @parameter 
+ *             + uint16_t *buffer : a array using store value get from D0-D7
+ *             + uint8_t w        : width of frame (column)
+ *             + uint8_t h        : height of frame (row)
+ * @note       when sending data to the screen, the high byte must be sent first,
+ *             followed by the low byte
+ * @document   OV7670_OmniVisionTechnologies.pdf - p.7
  */
 
-void get_frame(uint16_t *buffer,uint8_t w,uint8_t h){
-	uint16_t count=0;
-	
+void get_frame(uint8_t w,uint8_t h)
+{
+	uint8_t x, y;
+	#ifdef exchange_display
+		ST7735S_setWindow(0,0,w,h);
+	#else
+		ST7735S_setWindow(0,0,w,h);
+	#endif
 	while(!VS_STATUS); // wait for frame finish
 	while(VS_STATUS);  // start new frame
-	
-	while(h--){
+	y = h;
+	while(y--){
+		x = w;
 		while(!HS_STATUS); // wait for rising edge of signal HS
-		
-		while(w--){
-			buffer[count] &= 0;
+		while(x--){
 			while(PCLK_STATUS); // wait for falling edge of signal PCLK
-			buffer[count] |=  D7_STATUS << 7;
-			buffer[count] |=  D6_STATUS << 6;
-			buffer[count] |=  D5_STATUS << 5;
-			buffer[count] |=  D4_STATUS << 5;
-			buffer[count] |=  D3_STATUS << 3;
-			buffer[count] |=  D2_STATUS << 2;
-			buffer[count] |=  D1_STATUS << 1;
-			buffer[count] |=  D0_STATUS << 0;
-			buffer[count] <<= 8;
+			SPI_Write(GPIOA->IDR & 0xff); //byte high
 			while(!PCLK_STATUS);
 			while(PCLK_STATUS);
-			buffer[count] |=  D7_STATUS << 7;
-			buffer[count] |=  D6_STATUS << 6;
-			buffer[count] |=  D5_STATUS << 5;
-			buffer[count] |=  D4_STATUS << 5;
-			buffer[count] |=  D3_STATUS << 3;
-			buffer[count] |=  D2_STATUS << 2;
-			buffer[count] |=  D1_STATUS << 1;
-			buffer[count] |=  D0_STATUS << 0;
+			SPI_Write(GPIOA->IDR & 0xff); // byte low
 			while(!PCLK_STATUS);
-			count++;	
+		}
+	}
+}
+
+void I2C_ReInit(void){
+	I2C1->CR1 |=I2C_CR1_SWRST;
+	I2C1->CR1 &=~(I2C_CR1_SWRST);
+	I2C1->CR2 = 0x20;
+	I2C1->CCR = 0xA0;
+	I2C1->TRISE = 0x21;
+	I2C1->CR1 |= I2C_CR1_PE;
+}
+
+static void I2C_Start(void){
+	I2C1->CR1 |= (I2C_CR1_PE | I2C_CR1_START);
+	I2C1->CR1 &= ~(I2C_CR1_POS | I2C_CR1_SMBUS);
+	while(!(I2C1->SR1 & I2C_SR1_SB));
+}
+
+static void I2C_Addr(uint8_t addr){
+	do{
+		I2C1->DR = addr;
+		delay_ms(10);
+		if(I2C1->SR1 & I2C_SR1_AF){
+			I2C1->CR1 |= I2C_CR1_STOP | I2C_CR1_ACK;
+			delay_ms(1);
+			I2C_Start();
+			I2C1->SR1 &= ~I2C_SR1_AF;
+			I2C_Addr(addr);
+		}
+	}while(I2C1->SR1 & I2C_SR1_AF);
+}
+
+static void I2C_WriteByte(uint8_t data){
+	if(I2C1->SR2 != 0x7) error_led();
+	I2C1->DR = data;
+	delay_ms(10);
+}
+
+static uint8_t I2C_Read(uint8_t nack) {
+	if (nack) {
+		// if nack = 1, disable ACK (Don't sebd ACK after receive byte)
+		I2C1->CR1 |= I2C_CR1_PE;
+		I2C1->CR1 &= ~I2C_CR1_ACK;
+		delay_ms(1);
+
+		// I2C status
+		if ((I2C1->SR2 & (I2C_SR2_BUSY | I2C_SR2_MSL)) == 0x03) {
+			// wait data
+			while (!(I2C1->SR1 & I2C_SR1_RXNE));
+			return I2C1->DR;
+		} else {
+			error_led();
+			return 0;
+		}
+	} else {
+		// if nack = 0, enable ACK (send ACK after receive byte)
+		I2C1->CR1 |= I2C_CR1_PE | I2C_CR1_ACK;
+		delay_ms(1);
+
+		// I2c status
+		if ((I2C1->SR2 & (I2C_SR2_BUSY | I2C_SR2_MSL)) == 0x03) {
+			// wait data
+			while (!(I2C1->SR1 & I2C_SR1_RXNE));
+			return I2C1->DR;
+		} else {
+			error_led();
+			return 0;
 		}
 	}
 }

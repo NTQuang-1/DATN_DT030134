@@ -8,8 +8,6 @@
 
 #include "st7735s.h"
 
-extern SPI_HandleTypeDef hspi2;
-
 void SPI_Write(uint8_t volatile data){
 	while(!(SPI2->SR&SPI_SR_TXE));
 	SPI2->DR = data;
@@ -26,6 +24,29 @@ void ST7735S_sendCommand(uint8_t volatile cmd){
 	while(SPI2->SR & SPI_SR_BSY);
 	DC_HIGH;
 }
+
+/**
+ * @brief Setting st7735s window
+ * @note  
+ *              In normal mode                       In Exchange mode                     
+ *               weight = 128												   height = 128
+ *            ----------------->                    ----------------->
+ *            ------------------| |                 ------------------| |
+ *            | * * * * * * * * | |                 | * * * * * * * * | |
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            |                 | | height = 160    |                 | | weight = 160
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            |                 | |                 |                 | |
+ *            ------------------- V                 ------------------- V
+ * @reference ST7735S ver 1.4.pdf p.77
+ */
 	
 void ST7735S_setWindow(uint8_t x,uint8_t y,uint8_t w,uint8_t h){
 	// start coordinate(top-left corner)
@@ -46,15 +67,18 @@ void ST7735S_setWindow(uint8_t x,uint8_t y,uint8_t w,uint8_t h){
 }
 
 void ST7735S_Clear(void){
-	ST7735S_setWindow(0,0,160,128);
+	#ifdef exchange_display
+		ST7735S_setWindow(0,0,160,128);
+	#else
+		ST7735S_setWindow(0,0,128,160);
+	#endif
+	
 	for(uint16_t i=0;i<40960;i++)
 		SPI_Write(0);
 }
 
-void ST7735S_Init(SPI_HandleTypeDef *__spi){
-	hspi2 = *__spi;
-	
-	hspi2.Instance->CR1 |= SPI_CR1_SPE;
+void ST7735S_Init(void){
+	SPI2->CR1 |= SPI_CR1_SPE;
 	
 	CS_LOW;
 
@@ -120,7 +144,14 @@ void ST7735S_Init(SPI_HandleTypeDef *__spi){
   
   ST7735S_sendCommand(LCD_CMD_INVOFF);
   
-  XY_Change_Y_mirror_Display(); //RGB mode + che do man hinh ngang
+//	Nomal_Display();
+//	Y_mirror_Display();
+//	X_mirror_Display();
+//	XY_mirror_Display();
+//	XY_Change_Display();
+	XY_Change_Y_mirror_Display(); //RGB mode + che do man hinh ngang
+//	XY_Change_X_mirror_Display();
+//	XY_Change_XY_mirror_Display();
   
   ST7735S_sendCommand(LCD_CMD_COLMOD); //Interface Pixel Format
   SPI_Write(LCD_PIXEL_FORMAT_565); //16-bit/pixel
@@ -184,7 +215,7 @@ void ST7735S_Init(SPI_HandleTypeDef *__spi){
 }
 
 /*****************************************************************************************************
- *************************************Display Function************************************************
+ ***********************************Display Function (RGB)********************************************
  ***************************************pdf v1.4 p77**************************************************
  *****************************************************************************************************
  */
