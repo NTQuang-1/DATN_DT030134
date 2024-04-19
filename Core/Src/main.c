@@ -222,7 +222,7 @@ const uint8_t image[160*128*2]={
 
 uint16_t ADC_VAL;
 
-__IO uint8_t Gain,Blue,Red,Vref,Com1,Bave,Gbave,Aechh,Rave,Com2,Pid,Ver,Com3,Com4,Com5,Com6,Aech,Clkrc,Com7,Com8,Com9,Com10,Hstart,Hstop,Vstart,Vstop,Pshft,Midh,Midl,Mvfp,Laec,Adcctr0,Adcctr1,Adcctr2,Adcctr3,Aew,Aeb,Vpt,Bbias,Gbbias,Exhch,Exhcl,Rbias,Advfl,AdvfH,Yave,Hsyst,Hsyen,Href,Chlf,Arblm,Adc,Acom,Ofon,Tslb,Com11,Com12,Com13,Com14,Edge,Com15,Com16,Com17,AWBC1,AWBC2,AWBC3,AWBC4,AWBC5,AWBC6,Reg4b,Dnsth,Mtx1,Mtx2,Mtx3,Mtx4,Mtx5,Mtx6,Bright,Contras,Contras_Center,Mtxs,AWB7,AWB8,AWB9,AWB10,AWB11,AWB12,AWB13,AWB14,AWB15,Lcc1,Lcc2,Lcc3,Lcc4,Lcc5,Manu,Manv,Gfix,Ggain,Dblv,Awbctr3,Awbctr2,Awbctr1,Awbctr0,Scaling_xsc,Scaling_ysc,Scaling_dcwctr,Scaling_pclk_div,Reg74,Reg75,Reg76,Reg77,Slop,Gam1,Gam2,Gam3,Gam4,Gam5,Gam6,Gam7,Gam8,Gam9,Gam10,Gam11,Gam12,Gam13,Gam14,Gam15,Rgb444,Dm_lnl,Dm_lnh,Lcc6,Lcc7,Bd50st,Bd60st,Haecc1,Haecc2,Scaling_pckl_delay,Nt_ctrl,Bd50max,Haecc3,Haecc4,Haecc5,Haecc6,Haecc7,Bd60max,Str_opt,Str_r,Str_g,Str_b,Ablc1,Thl_st,Thl_dlt,Ad_chb,Ad_chr,Ad_chgb,Ad_chgr,Satctr;
+//__IO uint8_t Gain, Blue, Red, Tslb, Href, Hstart, Hstop, Vref, Vstart, Vstop;
 
 /* USER CODE END PV */
 
@@ -285,16 +285,17 @@ int main(void)
 
 	ST7735S_Init();     // initial Screen
 	OV7670_Init();			// initial Camera
-	Gain   = OV7670_read_reg(DCR_Gain);
-	Blue   = OV7670_read_reg(DCR_Blue);
-	Red    = OV7670_read_reg(DCR_Red);
-	Tslb   = OV7670_read_reg(DCR_Tslb);
-	Href   = OV7670_read_reg(DCR_Href);
-	Hstart = OV7670_read_reg(DCR_Hstart);
-	Hstop  = OV7670_read_reg(DCR_Hstop);
-	Vref   = OV7670_read_reg(DCR_Vref);
-	Vstart = OV7670_read_reg(DCR_Vstart);
-	Vstop  = OV7670_read_reg(DCR_Vstop);
+	
+//	Gain   = OV7670_read_reg(DCR_Gain);
+//	Blue   = OV7670_read_reg(DCR_Blue);
+//	Red    = OV7670_read_reg(DCR_Red);
+//	Tslb   = OV7670_read_reg(DCR_Tslb);
+//	Href   = OV7670_read_reg(DCR_Href);
+//	Hstart = OV7670_read_reg(DCR_Hstart);
+//	Hstop  = OV7670_read_reg(DCR_Hstop);
+//	Vref   = OV7670_read_reg(DCR_Vref);
+//	Vstart = OV7670_read_reg(DCR_Vstart);
+//	Vstop  = OV7670_read_reg(DCR_Vstop);
 	
 	//printImage();
   /* USER CODE END 2 */
@@ -641,8 +642,6 @@ void printImage(void){
 	for(uint16_t i=0;i<40960;i++)
 	{
 		SPI_Write(image[i]);
-		USART_Send(i);
-		
 	}
 }
 
@@ -703,23 +702,6 @@ void error_led(void){
 		delay_ms(100);
 	}
 }
-
-void USART_Send(uint8_t data){
-	while(!(USART1->SR & USART_SR_TXE));
-	USART1->DR = data;
-}
-
-
-
-
-
-
-
-
-
-
-
-
 
 /* USER CODE END 4 */
 

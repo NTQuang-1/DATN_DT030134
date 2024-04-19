@@ -117,7 +117,8 @@ const Reg_Data OV7670_Setting[] = {
 	{ DCR_Mtx6, 0x80 }, /* Matrix coefficient 6 */
 	{ DCR_Mtxs, 0x9e }, /* Matrix coefficient sign */
 
-// Gamma curve values 
+// Gamma curve values
+	{ DCR_Com13, 0x80 }, // Gamma enable
 	{ DCR_Slop, 0x20 },
 	{ DCR_Gam1, 0x10 },
 	{ DCR_Gam2, 0x1e },
@@ -159,10 +160,11 @@ const Reg_Data OV7670_Setting[] = {
 	{ DCR_Com9, 0x68 },  //-----------------------------------
 	
 	// Bright image
-	{ DCR_Bright, 0x18},
+	{ DCR_Bright, 0x10},
 
 	// Contrast image
 	{ DCR_Contras, 0x40},
+	{ DCR_Contras_Center, 0xff },
 	
 	// Effect : normal
 	{ DCR_Manu, 0xC0 },
@@ -175,6 +177,7 @@ const Reg_Data OV7670_Setting[] = {
 	{ DCR_Com5, 0x61 },
 	{ DCR_Com6, 0x4B },
 	{ 0x16, 0x02 },
+	{ DCR_Adcctr0, 0x0C }, // ADC range = 1.5, ADC reference = 1
 	{ DCR_Adcctr1, 0x02 },
 	{ DCR_Adcctr2, 0x91 },
 	{ 0x29, 0x07 },
@@ -207,32 +210,32 @@ const Reg_Data OV7670_Setting[] = {
 	{ DCR_Satctr, 0x60 }, // Saturation control
 	{ DCR_Arblm, 0x11 }, // Array Reference Control
 
-	// AGC and AEC parameters 
-//	{ DCR_Bd50max, 0x05 },
-//	{ DCR_Bd60max, 0x07 },
-//	{ DCR_Aew, 0x95 },
-//	{ DCR_Aeb, 0x33 },
-//	{ DCR_Vpt, 0xe3 },
-//	{ DCR_Haecc1, 0x78 },
-//	{ DCR_Haecc2, 0x68 },
-//	{ 0xa1, 0x03 }, // RSV
-//	{ DCR_Haecc3, 0xd8 },
-//	{ DCR_Haecc4, 0xd8 },
-//	{ DCR_Haecc5, 0xf0 },
-//	{ DCR_Haecc6, 0x90 },
-//	{ DCR_Haecc7, 0x94 },
-//	{ DCR_Aech, 0x00 },
+// AGC and AEC parameters 
+	{ DCR_Bd50max, 0x05 },
+	{ DCR_Bd60max, 0x07 },
+	{ DCR_Aew, 0xFF },
+	{ DCR_Aeb, 0x00 },
+	{ DCR_Vpt, 0xe3 },
+	{ DCR_Haecc1, 0x78 },
+	{ DCR_Haecc2, 0x68 },
+	{ 0xa1, 0x03 }, // RSV
+	{ DCR_Haecc3, 0xd8 },
+	{ DCR_Haecc4, 0xd8 },
+	{ DCR_Haecc5, 0xf0 },
+	{ DCR_Haecc6, 0x90 },
+	{ DCR_Haecc7, 0x94 },
+	{ DCR_Aech, 0x00 },
 
 // Additional parameters 
-//	{ DCR_Com16, 0x18 }, 
-//	{ DCR_Nt_ctrl, 0x88 },
-//	{ 0x78, 0x04 },
-//	{ 0x97, 0x30 },
-//	{ 0x98, 0x20 },
-//	{ 0x99, 0x30 },
-//	{ 0x9b, 0x29 },
-//	{ 0x9c, 0x03 },
-//	{ DCR_Gfix, 0x00 },
+	{ DCR_Com16, 0x18 }, 
+	{ DCR_Nt_ctrl, 0x88 },
+	{ 0x78, 0x04 },
+	{ 0x97, 0x30 },
+	{ 0x98, 0x20 },
+	{ 0x99, 0x30 },
+	{ 0x9b, 0x29 },
+	{ 0x9c, 0x03 },
+	{ DCR_Gfix, 0x00 },
 };
 
 /* Private function */

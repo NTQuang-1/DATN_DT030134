@@ -58,7 +58,6 @@ void Error_Handler(void);
 void error_led(void);
 void delay_us (uint16_t us);
 void delay_ms(uint16_t ms);
-void USART_Send(uint8_t data);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
