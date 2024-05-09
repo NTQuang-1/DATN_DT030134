@@ -117,24 +117,24 @@ const Reg_Data OV7670_Setting[] = {
 	{ DCR_Mtx6, 0x80 }, /* Matrix coefficient 6 */
 	{ DCR_Mtxs, 0x9e }, /* Matrix coefficient sign */
 
-// Gamma curve values
+// Gamma curve values with gamma 0.666
 	{ DCR_Com13, 0x80 }, // Gamma enable
-	{ DCR_Slop, 0x20 },
-	{ DCR_Gam1, 0x10 },
-	{ DCR_Gam2, 0x1e },
-	{ DCR_Gam3, 0x35 },
-	{ DCR_Gam4, 0x5a },
-	{ DCR_Gam5, 0x69 },
-	{ DCR_Gam6, 0x76 },
-	{ DCR_Gam7, 0x80 },
-	{ DCR_Gam8, 0x88 },
-	{ DCR_Gam9, 0x8f },
-	{ DCR_Gam10, 0x96 },
-	{ DCR_Gam11, 0xa3 },
-	{ DCR_Gam12, 0xaf },
-	{ DCR_Gam13, 0xc4 },
-	{ DCR_Gam14, 0xd7 },
-	{ DCR_Gam15, 0xe8 },
+	{ DCR_Slop, 0x2C },  // (256- gam15)*(4/3) = 44
+	{ DCR_Gam1, 0x10 },  // 16
+	{ DCR_Gam2, 0x19 },  // 25
+	{ DCR_Gam3, 0x28 },  // 40
+	{ DCR_Gam4, 0x40 },  // 64
+	{ DCR_Gam5, 0x4A },  // 74
+	{ DCR_Gam6, 0x54 },  // 84
+	{ DCR_Gam7, 0x5D },  // 93
+	{ DCR_Gam8, 0x66 },  // 102
+	{ DCR_Gam9, 0x6E },  // 110
+	{ DCR_Gam10, 0x76 }, // 118
+	{ DCR_Gam11, 0x85 }, // 133
+	{ DCR_Gam12, 0x93 }, // 147
+	{ DCR_Gam13, 0xAE }, // 174
+	{ DCR_Gam14, 0xC7 }, // 199
+	{ DCR_Gam15, 0xDF }, // 223
 
 // AWB parameters- white balance
 	{ DCR_Com8, 0xA7 }, // FsstAEC/AGC | AEC step | Band filter 50Hz | AGC enable | AWB enable | AEC enable 

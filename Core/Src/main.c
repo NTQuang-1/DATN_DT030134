@@ -235,6 +235,7 @@ static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void printImage(void);
+void getDataSoundMic(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -328,7 +329,7 @@ int main(void)
 		#else
 			get_frame(120,160);
 		#endif
-		delay_ms(50);
+		delay_ms(1);
 
 		/**********************test mic*************************/
 		//getDataSoundMic();
@@ -337,8 +338,6 @@ int main(void)
 		/*********************test Module DAC MCP4725***********/
 
 		//Set_Voltage(ADC_VAL);
-		//delay_us(5);
-		//Set_Voltage(0);
 
 		/*******************************************************/
   }
