@@ -259,8 +259,8 @@ void OV7670_write_reg(uint8_t reg, uint8_t data)
 	I2C_WriteByte(reg);
 	I2C_WriteByte(data);
 	I2C1->CR1 |= I2C_CR1_STOP | I2C_CR1_ACK;
-	delay_ms(1);
 	__enable_irq();
+	delay_us(100);
 }
 
 /**
@@ -355,10 +355,9 @@ static void I2C_Start(void){
 static void I2C_Addr(uint8_t addr){
 	do{
 		I2C1->DR = addr;
-		delay_ms(10);
+		delay_us(100);
 		if(I2C1->SR1 & I2C_SR1_AF){
 			I2C1->CR1 |= I2C_CR1_STOP | I2C_CR1_ACK;
-			delay_ms(1);
 			I2C_Start();
 			I2C1->SR1 &= ~I2C_SR1_AF;
 			I2C_Addr(addr);
@@ -369,7 +368,7 @@ static void I2C_Addr(uint8_t addr){
 static void I2C_WriteByte(uint8_t data){
 	if(I2C1->SR2 != 0x7) error_led();
 	I2C1->DR = data;
-	delay_ms(10);
+	delay_us(100);
 }
 
 static uint8_t I2C_Read(uint8_t nack) {

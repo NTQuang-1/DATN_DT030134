@@ -305,41 +305,17 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		/**
-		 * @processingImage : config in intial OV7670
-		 * @processingAudio : create function handle data audio
-		 * @taskone : get data image from V7670
-		 * @tasktwo : get data audio from Sound Sensor after then add @processingAudio
-		 * @taskthree : send data get from @taskone to ST7735 and display
-		 * @taskfour : send data get from @tasktwo to DAC MCP4725 -> PAM8403 amplify audio -> speaker
-		 */
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		
-		/************************TEST AREA**********************/
-		/***********************test screen and SPI OK**********/
-		
-		//printImage();
-		/*******************************************************/
-		
-		/*****************get data image************************/
 		#ifdef exchange_display
 			get_frame(160,120);
 		#else
 			get_frame(120,160);
 		#endif
-		delay_ms(1);
-
-		/**********************test mic*************************/
 		//getDataSoundMic();
-		/*******************************************************/
-		
-		/*********************test Module DAC MCP4725***********/
 
 		//Set_Voltage(ADC_VAL);
-
-		/*******************************************************/
   }
   /* USER CODE END 3 */
 }
