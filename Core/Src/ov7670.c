@@ -2,10 +2,8 @@
  * @file ov7670.c
  * @author NTQuang
  */
-#include <stdlib.h>
 #include "ov7670.h"
 #include "main.h"
-#include "stm32f1xx_hal_i2c.h"
 #include "st7735s.h"
 
 /* <!Color mode> */
