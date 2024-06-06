@@ -2,9 +2,16 @@
  * @file ov7670.c
  * @author NTQuang
  */
-#include "ov7670.h"
+#include <stdlib.h>
 #include "main.h"
+#include "ov7670.h"
 #include "st7735s.h"
+#include "ff.h"
+
+extern SPI_HandleTypeDef hspi1;
+extern FATFS   fs;      // file system
+extern FIL     fil;     // File
+extern FRESULT fresult; // result
 
 /* <!Color mode> */
 #define RGB_MODE
@@ -310,29 +317,45 @@ void OV7670_Init(void)
  * @document   OV7670_OmniVisionTechnologies.pdf - p.7
  */
 
-void get_frame(uint8_t w,uint8_t h)
+void get_frame(uint8_t w, uint8_t h)
 {
-	uint8_t x, y;
-	#ifdef exchange_display
-		ST7735S_setWindow(0,0,w,h);
-	#else
-		ST7735S_setWindow(0,0,w,h);
-	#endif
-	while(!VS_STATUS); // wait for frame finish
-	while(VS_STATUS);  // start new frame
-	y = h;
-	while(y--){
-		x = w;
-		while(!HS_STATUS); // wait for rising edge of signal HS
-		while(x--){
-			while(PCLK_STATUS); // wait for falling edge of signal PCLK
-			SPI_Write(GPIOA->IDR & 0xff); //byte high
-			while(!PCLK_STATUS);
-			while(PCLK_STATUS);
-			SPI_Write(GPIOA->IDR & 0xff); // byte low
-			while(!PCLK_STATUS);
-		}
-	}
+    uint8_t x, y, temp[2];
+    uint32_t frame_size = w * h * 2; // scale a frame (2 byte - 1 pixel)
+    uint8_t *buffer = (uint8_t *)malloc(frame_size); // Buffer store data frame
+    uint32_t buffer_index = 0;
+    uint32_t bytes_written = 0;
+    uint32_t bytes_to_write = 0;
+
+    #ifdef exchange_display
+        ST7735S_setWindow(0, 0, w, h);
+    #else
+        ST7735S_setWindow(0, 0, h, w);
+    #endif
+    while (!VS_STATUS); // wait for frame finish
+    while (VS_STATUS);  // start new frame
+
+    y = h;
+    while (y--) {
+        x = w;
+        while (!HS_STATUS); // wait for rising edge of signal HS
+        while (x--) {
+            while (PCLK_STATUS); // wait for falling edge of signal PCLK
+            temp[0] = GPIOA->IDR; SPI_Write(temp[0]); // byte high
+            buffer[buffer_index++] = temp[0];
+            while (!PCLK_STATUS);
+            while (PCLK_STATUS);
+            temp[1] = GPIOA->IDR; SPI_Write(temp[1]); // byte low
+            buffer[buffer_index++] = temp[1];
+            while (!PCLK_STATUS);
+        }	
+    }
+
+    while (bytes_written < frame_size) {
+        bytes_to_write = (frame_size - bytes_written) >= 512 ? 512 : (frame_size - bytes_written);
+        f_write(&fil, buffer + bytes_written, bytes_to_write, NULL);
+        bytes_written += bytes_to_write;
+    }
+    free(buffer);
 }
 
 void I2C_ReInit(void){

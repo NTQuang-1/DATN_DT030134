@@ -19,25 +19,29 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <string.h>
 #include "st7735s.h"
 #include "ov7670.h"
+#include "fatfs_sd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 typedef struct {
     uint8_t adc_status : 1; // 0 = write adc to mem, 1 = emit pwm
-    uint16_t count : 12;
-	uint8_t status_adc_start_dma : 1;
+    uint16_t count : 14;
+		uint8_t status_adc_start_dma : 1;
 } adc_follow;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_SIZE  4000
+#define ADC_SIZE  3584
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,6 +55,7 @@ DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c1;
 
+SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim2;
@@ -67,6 +72,9 @@ adc_follow adc_fl;
 uint8_t adcBuff[ADC_SIZE];
 uint16_t adcBuff0[ADC_SIZE];
 
+FATFS   fs;      // file system
+FIL     fil;     // File
+FRESULT fresult; // result
 
 /* USER CODE END PV */
 
@@ -78,8 +86,9 @@ static void MX_SPI2_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_TIM2_Init(void);
 void StartDefaultTask(void const * argument);
 void StartTask1(void const * argument);
 
@@ -89,7 +98,12 @@ static void time4_ReInit_8KHz(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == GPIO_PIN_6){
+		f_close(&fil);if(fresult!=FR_OK)return;
+		HAL_SPI_DeInit(&hspi1);
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -127,19 +141,27 @@ int main(void)
   MX_I2C1_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
-  MX_TIM2_Init();
   MX_TIM4_Init();
+  MX_SPI1_Init();
+  MX_FATFS_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-	
 	HAL_GPIO_WritePin(GPIOB,Led_Pin,ON_LED);
 	HAL_GPIO_WritePin(GPIOA,Reset_lcd_Pin,NO_RESX);
 	
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);      // Start emit pulse  with frequency 3MHz
 	__HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_4,2);  // adjust PWM 50% duty cycle
 
-	ST7735S_Init();     // initial Screen
-	OV7670_Init();			// initial Camera
+	ST7735S_Init();             // initial Screen
+	OV7670_Init();			        // initial Camera
+	HAL_I2C_MspDeInit(&hi2c1);  // disable I2C
 	time4_ReInit_8KHz();
+	
+	fresult = f_mount(&fs, "/", 1);if(fresult!=FR_OK)return 0;
+	fresult = f_open(&fil, "data.txt", FA_OPEN_ALWAYS | FA_READ | FA_WRITE);if(fresult!=FR_OK)return 0;
+	f_lseek(&fil,f_size(&fil));if(fresult!=FR_OK)return 0;
+//	f_puts("abcdef", &fil);
+//	fresult = f_close(&fil);
 	
 	HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
 	__HAL_TIM_ENABLE_DMA(&htim4, TIM_DMA_UPDATE); //bat DMA tim up cho timer4
@@ -324,6 +346,44 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 	if(I2C1->SR2 & I2C_SR2_BUSY){error_led();}
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+	
+  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -549,13 +609,12 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, Led_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, DC_Pin|Reset_lcd_Pin|CS_Pin, GPIO_PIN_RESET);
@@ -574,12 +633,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : Led_Pin */
-  GPIO_InitStruct.Pin = Led_Pin;
+  /*Configure GPIO pins : Led_Pin PB7 */
+  GPIO_InitStruct.Pin = Led_Pin|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(Led_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : DC_Pin Reset_lcd_Pin CS_Pin */
   GPIO_InitStruct.Pin = DC_Pin|Reset_lcd_Pin|CS_Pin;
@@ -588,8 +647,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PB6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
-	GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
@@ -677,7 +746,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){ // sau khi chuyen doi ad
 //	}
 	adc_fl.adc_status = 1;
 	xSemaphoreGiveFromISR(myBinarySem1Handle,&xHigherPriorityTaskWoken); // nhay vao task1 
-	portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // bat dau nhay vao task co do uu tien cao nhat
+	portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // bat dau nhay vao task co do uu tien cao nhat	
 }
 /* USER CODE END 4 */
 
@@ -696,6 +765,7 @@ void StartDefaultTask(void const * argument)
   for(;;)
   {
 		if(xSemaphoreTake(myMutex1Handle, portMAX_DELAY)== pdTRUE){ // Lock Mutex
+			//HAL_SPI_Init(&hspi1);
 			#ifdef exchange_display
 				__disable_irq();
 				get_frame(160,120);
